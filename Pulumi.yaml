@@ -1,0 +1,4 @@
+name: cloud-based-inference
+runtime: nodejs
+description: Infrastructure for Cloud-based Inference service on GCP Cloud Run
+
