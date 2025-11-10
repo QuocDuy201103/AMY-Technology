@@ -54,6 +54,18 @@ type ClassifyResponse struct {
 	Labels []ClassificationLabel `json:"labels"`
 }
 
+// EmailRequest represents a single email in the batch request
+type EmailRequest struct {
+	ID      string `json:"id"`
+	Content string `json:"content"`
+}
+
+// BatchClassificationResult represents the classification result for a single email in batch
+type BatchClassificationResult struct {
+	ID     string                 `json:"id"`
+	Labels []ClassificationLabel `json:"labels"`
+}
+
 // DraftResponse represents the response from the draft endpoint
 type DraftResponse struct {
 	Draft string `json:"draft"`
@@ -237,9 +249,32 @@ func (c *DeepseekClient) ClassifyEmail(content string) (*ClassifyResponse, error
 	}
 	var out ClassifyResponse
 	// Try to parse strict JSON from model content
-	if err := json.Unmarshal([]byte(cr.Choices[0].Message.Content), &out); err != nil {
-		return nil, fmt.Errorf("model did not return valid JSON for classification: %w", err)
+	responseContent := strings.TrimSpace(cr.Choices[0].Message.Content)
+	
+	// Log raw content for debugging
+	log.Printf("DeepSeek API response content: %s", responseContent)
+	
+	// Try to extract JSON if wrapped in markdown code blocks
+	if strings.HasPrefix(responseContent, "```json") {
+		responseContent = strings.TrimPrefix(responseContent, "```json")
+		responseContent = strings.TrimSuffix(responseContent, "```")
+		responseContent = strings.TrimSpace(responseContent)
+	} else if strings.HasPrefix(responseContent, "```") {
+		responseContent = strings.TrimPrefix(responseContent, "```")
+		responseContent = strings.TrimSuffix(responseContent, "```")
+		responseContent = strings.TrimSpace(responseContent)
 	}
+	
+	if err := json.Unmarshal([]byte(responseContent), &out); err != nil {
+		log.Printf("Failed to parse JSON from model response: %v, content: %s", err, responseContent)
+		return nil, fmt.Errorf("model did not return valid JSON for classification: %w, content: %s", err, responseContent)
+	}
+	
+	// Validate that labels are not empty
+	if len(out.Labels) == 0 {
+		log.Printf("Warning: Model returned empty labels, content: %s", responseContent)
+	}
+	
 	return &out, nil
 }
 
@@ -284,4 +319,31 @@ func (c *DeepseekClient) DraftReply(content string) (*DraftResponse, error) {
 		return nil, fmt.Errorf("no choices returned from model")
 	}
 	return &DraftResponse{Draft: strings.TrimSpace(cr.Choices[0].Message.Content)}, nil
+}
+
+// ClassifyEmailsBatch processes multiple emails for classification
+func (c *DeepseekClient) ClassifyEmailsBatch(emails []EmailRequest) ([]BatchClassificationResult, error) {
+	results := make([]BatchClassificationResult, len(emails))
+	
+	// Process emails sequentially (can be parallelized if needed)
+	for i, email := range emails {
+		classification, err := c.ClassifyEmail(email.Content)
+		if err != nil {
+			// Log error but continue processing other emails
+			log.Printf("Error classifying email %s: %v", email.ID, err)
+			// Return error result for this email
+			results[i] = BatchClassificationResult{
+				ID:     email.ID,
+				Labels: []ClassificationLabel{},
+			}
+			continue
+		}
+		
+		results[i] = BatchClassificationResult{
+			ID:     email.ID,
+			Labels: classification.Labels,
+		}
+	}
+	
+	return results, nil
 }

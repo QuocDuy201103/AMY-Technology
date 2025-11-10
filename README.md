@@ -5,7 +5,7 @@ A Go-based email processing service deployed on Google Cloud Run, providing NLP 
 ## Features
 
 - **POST /summarize** - Summarizes email content (returns gzip-compressed JSON)
-- **POST /classify** - Classifies email content with labels
+- **POST /classify** - Batch email classification (1-100 emails per request, JSON format with gzip compression)
 - **POST /draft** - Generates AI-powered draft replies
 
 ## Architecture
@@ -111,10 +111,96 @@ curl -X POST http://localhost:8080/summarize \
   -H "Content-Type: text/html" \
   -d "<html><body>Your email content here</body></html>"
 
-# Classify
-curl -X POST http://localhost:8080/classify \
-  -H "Content-Type: text/html" \
-  -d "<html><body>Your email content here</body></html>"
+# Classify (Batch - supports 1-100 emails)
+
+## PowerShell (Windows)
+```powershell
+# Without gzip compression (for testing)
+$body = @{
+    emails = @(
+        @{
+            id = "email-1"
+            content = "<html><body>Your email content here</body></html>"
+        },
+        @{
+            id = "email-2"
+            content = "<html><body>Another email content</body></html>"
+        }
+    )
+} | ConvertTo-Json -Depth 10
+
+Invoke-RestMethod -Uri "https://cloud-inference-service-56f7906-gid3zyqgfa-uc.a.run.app/classify" `
+    -Method Post `
+    -ContentType "application/json" `
+    -Body $body
+
+# With gzip compression
+$jsonBody = @{
+    emails = @(
+        @{
+            id = "email-1"
+            content = "<html><body>Your email content here</body></html>"
+        }
+    )
+} | ConvertTo-Json -Depth 10
+
+$jsonBytes = [System.Text.Encoding]::UTF8.GetBytes($jsonBody)
+$ms = New-Object System.IO.MemoryStream
+$gzip = New-Object System.IO.Compression.GZipStream($ms, [System.IO.Compression.CompressionMode]::Compress)
+$gzip.Write($jsonBytes, 0, $jsonBytes.Length)
+$gzip.Close()
+$compressed = $ms.ToArray()
+$ms.Dispose()
+
+$response = Invoke-WebRequest -Uri "https://cloud-inference-service-56f7906-gid3zyqgfa-uc.a.run.app/classify" `
+    -Method Post `
+    -ContentType "application/json" `
+    -Headers @{"Content-Encoding" = "gzip"} `
+    -Body $compressed
+
+# Decompress response if needed
+$responseStream = New-Object System.IO.MemoryStream(,$response.Content)
+$gzipStream = New-Object System.IO.Compression.GZipStream($responseStream, [System.IO.Compression.CompressionMode]::Decompress)
+$reader = New-Object System.IO.StreamReader($gzipStream)
+$decompressed = $reader.ReadToEnd()
+$reader.Close()
+$gzipStream.Close()
+$responseStream.Close()
+
+$decompressed | ConvertFrom-Json
+```
+
+## Bash/Linux
+```bash
+# Without gzip compression (for testing)
+curl -X POST https://cloud-inference-service-56f7906-gid3zyqgfa-uc.a.run.app/classify \
+  -H "Content-Type: application/json" \
+  -d '{
+    "emails": [
+      {
+        "id": "email-1",
+        "content": "<html><body>Your email content here</body></html>"
+      },
+      {
+        "id": "email-2",
+        "content": "<html><body>Another email content</body></html>"
+      }
+    ]
+  }'
+
+# With gzip compression
+echo '{
+  "emails": [
+    {
+      "id": "email-1",
+      "content": "<html><body>Your email content here</body></html>"
+    }
+  ]
+}' | gzip | curl -X POST https://cloud-inference-service-56f7906-gid3zyqgfa-uc.a.run.app/classify \
+  -H "Content-Type: application/json" \
+  -H "Content-Encoding: gzip" \
+  --data-binary @-
+```
 
 # Draft
 curl -X POST http://localhost:8080/draft \
@@ -150,6 +236,75 @@ curl -X POST http://localhost:8080/draft \
 └── TESTING.md                # Testing instructions
 ```
 
+## API Documentation
+
+### POST /classify
+
+Batch email classification endpoint that supports processing 1-100 emails per request.
+
+**Request Format:**
+- Content-Type: `application/json` (required)
+- Content-Encoding: `gzip` (optional, but recommended for large payloads)
+- Body: JSON object with `emails` array (can be gzip compressed)
+
+```json
+{
+  "emails": [
+    {
+      "id": "email-1",
+      "content": "<html><body>Email content here</body></html>"
+    },
+    {
+      "id": "email-2",
+      "content": "<html><body>Another email</body></html>"
+    }
+  ]
+}
+```
+
+**Response Format:**
+- Content-Type: `application/json` (always)
+- Content-Encoding: `gzip` (always compressed)
+- Body: JSON object with `results` array
+  - **Chỉ trả về:** Email ID và kết quả phân loại (labels)
+  - **Không trả về:** Nội dung email (content)
+  - **Luôn được nén:** Gzip compression
+
+```json
+{
+  "results": [
+    {
+      "id": "email-1",
+      "labels": [
+        {
+          "label": "important",
+          "score": 0.95
+        },
+        {
+          "label": "work",
+          "score": 0.87
+        }
+      ]
+    },
+    {
+      "id": "email-2",
+      "labels": [
+        {
+          "label": "spam",
+          "score": 0.92
+        }
+      ]
+    }
+  ]
+}
+```
+
+**Notes:**
+- Maximum 100 emails per request
+- Each email must have a unique `id` and `content`
+- Response only includes email ID and classification results (not email content)
+- Both request and response support gzip compression for efficient network transfer
+
 ## API Client Features
 
 The `DeepseekClient` includes:
@@ -157,6 +312,7 @@ The `DeepseekClient` includes:
 - Timeout handling (30 seconds default)
 - Error handling with structured API errors
 - JSON response parsing
+- Batch processing support for email classification
 
 ## Middleware
 

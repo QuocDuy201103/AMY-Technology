@@ -1,0 +1,25 @@
+{
+  "emails": [
+    {
+      "id": "email-001",
+      "content": "<html><body><p>Hi Team,</p><p>I wanted to follow up on our discussion from yesterday's meeting. Please review the attached proposal and let me know your thoughts by end of week.</p><p>Best regards,<br>John</p></body></html>"
+    },
+    {
+      "id": "email-002",
+      "content": "<html><body><p><strong>URGENT - ACTION REQUIRED</strong></p><p>Please review and approve the budget proposal immediately. Deadline is today at 5 PM.</p><p>This is a high-priority item that requires your immediate attention.</p></body></html>"
+    },
+    {
+      "id": "email-003",
+      "content": "<html><body><p>CONGRATULATIONS! You have won $1,000,000!</p><p>Click here now to claim your prize: <a href=\"http://fake-scam.com\">Claim Prize</a></p><p>Limited time offer! Act now!</p></body></html>"
+    },
+    {
+      "id": "email-004",
+      "content": "<html><body><p>Hey Sarah,</p><p>Are you free this weekend? A few of us are planning to go hiking on Saturday. Let me know if you'd like to join!</p><p>Cheers,<br>Mike</p></body></html>"
+    },
+    {
+      "id": "email-005",
+      "content": "<html><body><p>Meeting reminder: Team standup at 10 AM tomorrow.</p></body></html>"
+    }
+  ]
+}
+

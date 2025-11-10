@@ -3,6 +3,7 @@ package main
 import (
 	"compress/gzip"
 	"encoding/json"
+	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -45,14 +46,21 @@ type ErrorResponse struct {
 	Message string `json:"message,omitempty"`
 }
 
-// JSONError writes an error response as JSON
+// JSONError writes an error response as JSON (with gzip compression)
 func JSONError(w http.ResponseWriter, message string, statusCode int) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(statusCode)
-	json.NewEncoder(w).Encode(ErrorResponse{
+	errorResp := ErrorResponse{
 		Error:   http.StatusText(statusCode),
 		Message: message,
-	})
+	}
+	// Set status code first
+	w.WriteHeader(statusCode)
+	// Use gzip compression for error responses too
+	if err := writeGzipJSON(w, errorResp); err != nil {
+		// Fallback to uncompressed JSON if gzip fails
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Del("Content-Encoding") // Remove gzip header if set
+		json.NewEncoder(w).Encode(errorResp)
+	}
 }
 
 // CORS middleware
@@ -112,13 +120,25 @@ func JSONRecovery(next http.Handler) http.Handler {
 	})
 }
 
-// readRequestBody reads the request body
-func readRequestBody(r *http.Request) (string, error) {
-	body, err := io.ReadAll(r.Body)
-	if err != nil {
-		return "", err
+// readRequestBody reads the request body, handling gzip decompression
+func readRequestBody(r *http.Request) ([]byte, error) {
+	var reader io.Reader = r.Body
+	
+	// Check if content is gzip compressed
+	if r.Header.Get("Content-Encoding") == "gzip" {
+		gzReader, err := gzip.NewReader(r.Body)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create gzip reader: %w", err)
+		}
+		defer gzReader.Close()
+		reader = gzReader
 	}
-	return string(body), nil
+	
+	body, err := io.ReadAll(reader)
+	if err != nil {
+		return nil, err
+	}
+	return body, nil
 }
 
 // writeGzipJSON writes JSON response with gzip compression
@@ -139,12 +159,13 @@ func (s *Server) SummarizeHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	content, err := readRequestBody(r)
+	bodyBytes, err := readRequestBody(r)
 	if err != nil {
-		JSONError(w, "Failed to read request body", http.StatusBadRequest)
+		JSONError(w, fmt.Sprintf("Failed to read request body: %v", err), http.StatusBadRequest)
 		return
 	}
 
+	content := string(bodyBytes)
 	if strings.TrimSpace(content) == "" {
 		JSONError(w, "Email content is required", http.StatusBadRequest)
 		return
@@ -165,6 +186,22 @@ func (s *Server) SummarizeHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// BatchClassifyRequest represents the batch classification request
+type BatchClassifyRequest struct {
+	Emails []EmailRequest `json:"emails"`
+}
+
+// ClassificationResult represents the classification result for a single email
+type ClassificationResult struct {
+	ID      string                 `json:"id"`
+	Labels  []ClassificationLabel `json:"labels"`
+}
+
+// BatchClassifyResponse represents the batch classification response
+type BatchClassifyResponse struct {
+	Results []ClassificationResult `json:"results"`
+}
+
 // ClassifyHandler handles POST /classify
 func (s *Server) ClassifyHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
@@ -172,26 +209,71 @@ func (s *Server) ClassifyHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	content, err := readRequestBody(r)
+	// Validate Content-Type must be application/json
+	contentType := r.Header.Get("Content-Type")
+	if contentType != "application/json" && !strings.HasPrefix(contentType, "application/json;") {
+		JSONError(w, "Content-Type must be application/json", http.StatusBadRequest)
+		return
+	}
+
+	// Read and decompress request body
+	bodyBytes, err := readRequestBody(r)
 	if err != nil {
-		JSONError(w, "Failed to read request body", http.StatusBadRequest)
+		JSONError(w, fmt.Sprintf("Failed to read request body: %v", err), http.StatusBadRequest)
 		return
 	}
 
-	if strings.TrimSpace(content) == "" {
-		JSONError(w, "Email content is required", http.StatusBadRequest)
+	// Parse JSON request
+	var batchReq BatchClassifyRequest
+	if err := json.Unmarshal(bodyBytes, &batchReq); err != nil {
+		JSONError(w, fmt.Sprintf("Invalid JSON format: %v", err), http.StatusBadRequest)
 		return
 	}
 
-	classification, err := s.client.ClassifyEmail(content)
+	// Validate request
+	if len(batchReq.Emails) == 0 {
+		JSONError(w, "At least one email is required", http.StatusBadRequest)
+		return
+	}
+
+	if len(batchReq.Emails) > 100 {
+		JSONError(w, "Maximum 100 emails allowed per request", http.StatusBadRequest)
+		return
+	}
+
+	// Validate each email
+	for i, email := range batchReq.Emails {
+		if strings.TrimSpace(email.ID) == "" {
+			JSONError(w, fmt.Sprintf("Email ID is required for email at index %d", i), http.StatusBadRequest)
+			return
+		}
+		if strings.TrimSpace(email.Content) == "" {
+			JSONError(w, fmt.Sprintf("Email content is required for email at index %d", i), http.StatusBadRequest)
+			return
+		}
+	}
+
+	// Process batch classification
+	results, err := s.client.ClassifyEmailsBatch(batchReq.Emails)
 	if err != nil {
-		log.Printf("Error calling Deepseek API for classify: %v", err)
-		JSONError(w, "Failed to classify email", http.StatusInternalServerError)
+		log.Printf("Error calling Deepseek API for batch classify: %v", err)
+		JSONError(w, "Failed to classify emails", http.StatusInternalServerError)
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(classification); err != nil {
+	// Build response with only ID and classification result
+	response := BatchClassifyResponse{
+		Results: make([]ClassificationResult, len(results)),
+	}
+	for i, result := range results {
+		response.Results[i] = ClassificationResult{
+			ID:     result.ID,
+			Labels: result.Labels,
+		}
+	}
+
+	// Send compressed JSON response
+	if err := writeGzipJSON(w, response); err != nil {
 		log.Printf("Error writing response: %v", err)
 		JSONError(w, "Failed to encode response", http.StatusInternalServerError)
 		return
@@ -205,12 +287,13 @@ func (s *Server) DraftHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	content, err := readRequestBody(r)
+	bodyBytes, err := readRequestBody(r)
 	if err != nil {
-		JSONError(w, "Failed to read request body", http.StatusBadRequest)
+		JSONError(w, fmt.Sprintf("Failed to read request body: %v", err), http.StatusBadRequest)
 		return
 	}
 
+	content := string(bodyBytes)
 	if strings.TrimSpace(content) == "" {
 		JSONError(w, "Email content is required", http.StatusBadRequest)
 		return
