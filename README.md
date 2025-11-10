@@ -1,6 +1,6 @@
 # Cloud-based Inference Service
 
-A Go-based email processing service deployed on Google Cloud Run, providing NLP capabilities through the Deepspeak API.
+A Go-based email processing service deployed on Google Cloud Run, providing NLP capabilities through the Deepseek API.
 
 ## Features
 
@@ -13,7 +13,7 @@ A Go-based email processing service deployed on Google Cloud Run, providing NLP 
 - **Language**: Go 1.21
 - **Framework**: net/http with gorilla/mux
 - **Infrastructure**: Pulumi (TypeScript) for GCP Cloud Run
-- **API Client**: Deepspeak API integration with retry logic
+- **API Client**: Deepseek API integration with retry logic
 
 ## Prerequisites
 
@@ -44,8 +44,8 @@ pulumi login
 # Set configuration
 pulumi config set projectId your-gcp-project-id
 pulumi config set region us-central1
-pulumi config set deepspeakApiUrl https://api.deepspeak.com
-pulumi config set --secret deepspeakApiKey your-api-key
+pulumi config set deepseekApiUrl https://api.deepseek.com
+pulumi config set --secret deepseekApiKey your-api-key
 ```
 
 ### 3. Build Docker Image
@@ -70,22 +70,26 @@ pulumi preview
 pulumi up
 ```
 
+**For detailed GCP deployment instructions in Vietnamese, see [GCP_DEPLOYMENT.md](GCP_DEPLOYMENT.md)**
+
+**For quick deployment guide for siftly-backend-dev project, see [DEPLOY_SIFTLY.md](DEPLOY_SIFTLY.md)**
+
 ## Local Development
 
 ### Run the Server
 
 **PowerShell:**
 ```powershell
-$env:DEEPSPEAK_API_KEY = "sk-your-api-key-here"
-$env:DEEPSPEAK_API_URL = "https://api.deepseek.com"
+$env:DEEPSEEK_API_KEY = "sk-bbbaa627589b4a338e2a3e010a3c11b5"
+$env:DEEPSEEK_API_URL = "https://api.deepseek.com"
 $env:DEEPSEEK_MODEL = "deepseek-chat"  # Optional
 go run .
 ```
 
 **Bash/Linux:**
 ```bash
-export DEEPSPEAK_API_KEY="sk-your-api-key-here"
-export DEEPSPEAK_API_URL="https://api.deepseek.com"
+export DEEPSEEK_API_KEY="sk-your-api-key-here"
+export DEEPSEEK_API_URL="https://api.deepseek.com"
 export DEEPSEEK_MODEL="deepseek-chat"  # Optional
 go run .
 ```
@@ -122,8 +126,8 @@ curl -X POST http://localhost:8080/draft \
 
 ## Environment Variables
 
- - `DEEPSPEAK_API_KEY` (required) - API key for DeepSeek API
- - `DEEPSPEAK_API_URL` (optional) - Base URL for DeepSeek API (default: https://api.deepseek.com)
+ - `DEEPSEEK_API_KEY` (required) - API key for DeepSeek API
+ - `DEEPSEEK_API_URL` (optional) - Base URL for DeepSeek API (default: https://api.deepseek.com)
  - `DEEPSEEK_MODEL` (optional) - Chat model name (default: deepseek-chat)
 - `PORT` (optional) - Server port (default: 8080)
  - `GEMINI_API_KEY` (optional) - API key for Google Generative Language API
@@ -135,18 +139,20 @@ curl -X POST http://localhost:8080/draft \
 ```
 .
 ├── main.go                    # Main server application
-├── deepspeak_client.go        # Deepspeak API client
-├── deepspeak_client_test.go   # Client unit tests
+├── deepseek_client.go        # Deepseek API client
+├── deepseek_client_test.go   # Client unit tests
 ├── go.mod                     # Go module definition
 ├── Dockerfile                 # Docker build configuration
 ├── index.ts                   # Pulumi infrastructure code
 ├── Pulumi.yaml               # Pulumi project configuration
-└── README.md                 # This file
+├── README.md                 # This file
+├── GCP_DEPLOYMENT.md         # GCP deployment guide (Vietnamese)
+└── TESTING.md                # Testing instructions
 ```
 
 ## API Client Features
 
-The `DeepspeakClient` includes:
+The `DeepseekClient` includes:
 - Automatic retries with exponential backoff (up to 3 retries)
 - Timeout handling (30 seconds default)
 - Error handling with structured API errors

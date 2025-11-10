@@ -17,8 +17,10 @@ bin/
 Pulumi.*.yaml
 !Pulumi.yaml
 
+# Tutorial
+deploy_turtorial/
+
 # Node
-openai/
 node_modules/
 npm-debug.log*
 yarn-debug.log*

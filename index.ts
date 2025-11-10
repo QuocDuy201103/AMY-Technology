@@ -5,8 +5,8 @@ import * as gcp from "@pulumi/gcp";
 const config = new pulumi.Config();
 const projectId = config.get("projectId") || gcp.config.project || "your-gcp-project-id";
 const region = config.get("region") || "us-central1";
-const deepspeakApiUrl = config.require("deepspeakApiUrl");
-const deepspeakApiKey = config.requireSecret("deepspeakApiKey");
+const deepseekApiUrl = config.require("deepseekApiUrl");
+const deepseekApiKey = config.requireSecret("deepseekApiKey");
 
 // Create a Cloud Run service
 const service = new gcp.cloudrun.Service("cloud-inference-service", {
@@ -21,12 +21,12 @@ const service = new gcp.cloudrun.Service("cloud-inference-service", {
                 }],
                 envs: [
                     {
-                        name: "DEEPSPEAK_API_URL",
-                        value: deepspeakApiUrl,
+                        name: "DEEPSEEK_API_URL",
+                        value: deepseekApiUrl,
                     },
                     {
-                        name: "DEEPSPEAK_API_KEY",
-                        value: deepspeakApiKey,
+                        name: "DEEPSEEK_API_KEY",
+                        value: deepseekApiKey,
                     },
                 ],
                 resources: {

@@ -15,27 +15,27 @@ import (
 
 // Server holds the application dependencies
 type Server struct {
-	client *DeepspeakClient
+	client *DeepseekClient
 }
 
 // NewServer creates a new server instance
 func NewServer() *Server {
-	baseURL := os.Getenv("DEEPSPEAK_API_URL")
+	baseURL := os.Getenv("DEEPSEEK_API_URL")
 	if baseURL == "" {
-		baseURL = "https://api.deepspeak.com"
-		log.Printf("Using default DEEPSPEAK_API_URL: %s", baseURL)
+		baseURL = "https://api.deepseek.com"
+		log.Printf("Using default DEEPSEEK_API_URL: %s", baseURL)
 	} else {
-		log.Printf("Using DEEPSPEAK_API_URL: %s", baseURL)
+		log.Printf("Using DEEPSEEK_API_URL: %s", baseURL)
 	}
 
-	apiKey := os.Getenv("DEEPSPEAK_API_KEY")
+	apiKey := strings.TrimSpace(os.Getenv("DEEPSEEK_API_KEY"))
 	if apiKey == "" {
-		log.Fatal("DEEPSPEAK_API_KEY environment variable is required")
+		log.Fatal("DEEPSEEK_API_KEY environment variable is required")
 	}
-	log.Printf("DEEPSPEAK_API_KEY is configured (length: %d)", len(apiKey))
+	log.Printf("DEEPSEEK_API_KEY is configured (length: %d)", len(apiKey))
 
 	return &Server{
-		client: NewDeepspeakClient(baseURL, apiKey),
+		client: NewDeepseekClient(baseURL, apiKey),
 	}
 }
 
@@ -152,7 +152,7 @@ func (s *Server) SummarizeHandler(w http.ResponseWriter, r *http.Request) {
 
 	summary, err := s.client.SummarizeEmail(content)
 	if err != nil {
-		log.Printf("Error calling Deepspeak API for summarize: %v", err)
+		log.Printf("Error calling Deepseek API for summarize: %v", err)
 		// Log detailed error for debugging, but return generic message to client
 		JSONError(w, "Failed to summarize email", http.StatusInternalServerError)
 		return
@@ -185,7 +185,7 @@ func (s *Server) ClassifyHandler(w http.ResponseWriter, r *http.Request) {
 
 	classification, err := s.client.ClassifyEmail(content)
 	if err != nil {
-		log.Printf("Error calling Deepspeak API for classify: %v", err)
+		log.Printf("Error calling Deepseek API for classify: %v", err)
 		JSONError(w, "Failed to classify email", http.StatusInternalServerError)
 		return
 	}
@@ -218,7 +218,7 @@ func (s *Server) DraftHandler(w http.ResponseWriter, r *http.Request) {
 
 	draft, err := s.client.DraftReply(content)
 	if err != nil {
-		log.Printf("Error calling Deepspeak API for draft: %v", err)
+		log.Printf("Error calling Deepseek API for draft: %v", err)
 		JSONError(w, "Failed to generate draft reply", http.StatusInternalServerError)
 		return
 	}

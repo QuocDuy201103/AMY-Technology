@@ -12,21 +12,23 @@ import (
 	"time"
 )
 
-// DeepspeakClient handles communication with the Deepspeak API
-type DeepspeakClient struct {
+// DeepseekClient handles communication with the Deepseek API
+type DeepseekClient struct {
 	BaseURL    string
 	APIKey     string
 	HTTPClient *http.Client
 	Model      string
 }
 
-// NewDeepspeakClient creates a new DeepspeakClient instance
-func NewDeepspeakClient(baseURL, apiKey string) *DeepspeakClient {
+// NewDeepseekClient creates a new DeepseekClient instance
+func NewDeepseekClient(baseURL, apiKey string) *DeepseekClient {
 	model := os.Getenv("DEEPSEEK_MODEL")
 	if strings.TrimSpace(model) == "" {
 		model = "deepseek-chat"
 	}
-	return &DeepspeakClient{
+	// Trim API key to remove any whitespace/newlines that might cause header issues
+	apiKey = strings.TrimSpace(apiKey)
+	return &DeepseekClient{
 		BaseURL: baseURL,
 		APIKey:  apiKey,
 		HTTPClient: &http.Client{
@@ -68,7 +70,7 @@ func (e *APIError) Error() string {
 }
 
 // makeRequest performs an HTTP request with retries
-func (c *DeepspeakClient) makeRequest(method, endpoint string, body io.Reader, maxRetries int) (*http.Response, error) {
+func (c *DeepseekClient) makeRequest(method, endpoint string, body io.Reader, maxRetries int) (*http.Response, error) {
 	url := fmt.Sprintf("%s%s", c.BaseURL, endpoint)
 	log.Printf("Making request to: %s %s", method, url)
 
@@ -103,7 +105,9 @@ func (c *DeepspeakClient) makeRequest(method, endpoint string, body io.Reader, m
 
 		// Default to JSON; callers can override with their body if needed
 		req.Header.Set("Content-Type", "application/json")
-		req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", c.APIKey))
+		// Trim API key again before setting header to ensure no invalid characters
+		apiKey := strings.TrimSpace(c.APIKey)
+		req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", apiKey))
 
 		resp, err := c.HTTPClient.Do(req)
 		if err != nil {
@@ -147,7 +151,7 @@ type chatResponse struct {
 }
 
 // SummarizeEmail sends email content to the summarize endpoint
-func (c *DeepspeakClient) SummarizeEmail(content string) (*SummaryResponse, error) {
+func (c *DeepseekClient) SummarizeEmail(content string) (*SummaryResponse, error) {
 	// Build prompt
 	reqBody := chatRequest{
 		Model: c.Model,
@@ -191,7 +195,7 @@ func (c *DeepspeakClient) SummarizeEmail(content string) (*SummaryResponse, erro
 }
 
 // ClassifyEmail sends email content to the classify endpoint
-func (c *DeepspeakClient) ClassifyEmail(content string) (*ClassifyResponse, error) {
+func (c *DeepseekClient) ClassifyEmail(content string) (*ClassifyResponse, error) {
 	// Instruct model to output strict JSON
 	reqBody := chatRequest{
 		Model: c.Model,
@@ -240,7 +244,7 @@ func (c *DeepspeakClient) ClassifyEmail(content string) (*ClassifyResponse, erro
 }
 
 // DraftReply sends email content to the draft endpoint
-func (c *DeepspeakClient) DraftReply(content string) (*DraftResponse, error) {
+func (c *DeepseekClient) DraftReply(content string) (*DraftResponse, error) {
 	reqBody := chatRequest{
 		Model: c.Model,
 		Messages: []chatMessage{

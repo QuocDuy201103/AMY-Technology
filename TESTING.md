@@ -24,16 +24,16 @@ Set environment variables:
 
 **PowerShell:**
 ```powershell
-$env:DEEPSPEAK_API_KEY = "sk-bbbaa627589b4a338e2a3e010a3c11b5"
-$env:DEEPSPEAK_API_URL = "https://api.deepseek.com"
+$env:DEEPSEEK_API_KEY = "sk-bbbaa627589b4a338e2a3e010a3c11b5"
+$env:DEEPSEEK_API_URL = "https://api.deepseek.com"
 $env:DEEPSEEK_MODEL = "deepseek-chat"  # Optional, defaults to deepseek-chat
 $env:PORT = "8080"  # Optional, defaults to 8080
 ```
 
 **Bash/Linux:**
 ```bash
-export DEEPSPEAK_API_KEY="sk-bbbaa627589b4a338e2a3e010a3c11b5"
-export DEEPSPEAK_API_URL="https://api.deepseek.com"
+export DEEPSEEK_API_KEY="sk-bbbaa627589b4a338e2a3e010a3c11b5"
+export DEEPSEEK_API_URL="https://api.deepseek.com"
 export DEEPSEEK_MODEL="deepseek-chat"  # Optional
 export PORT="8080"  # Optional
 ```
@@ -46,8 +46,8 @@ go run .
 
 You should see:
 ```
-2025/11/06 XX:XX:XX Using DEEPSPEAK_API_URL: https://api.deepseek.com
-2025/11/06 XX:XX:XX DEEPSPEAK_API_KEY is configured (length: XX)
+2025/11/06 XX:XX:XX Using DEEPSEEK_API_URL: https://api.deepseek.com
+2025/11/06 XX:XX:XX DEEPSEEK_API_KEY is configured (length: XX)
 2025/11/06 XX:XX:XX Server starting on port 8080
 ```
 
@@ -222,11 +222,11 @@ curl -sS "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-fla
 
 ## 7. Troubleshooting
 
-### Error: "DEEPSPEAK_API_KEY environment variable is required"
+### Error: "DEEPSEEK_API_KEY environment variable is required"
 - Make sure you've set the environment variable before running `go run .`
 
 ### Error: "request failed: Post ... remote error: tls: unrecognized name"
-- Check that `DEEPSPEAK_API_URL` is set to `https://api.deepseek.com` (not `api.deepspeak.com`)
+- Check that `DEEPSEEK_API_URL` is set to `https://api.deepseek.com` (not `api.deepseek.com`)
 
 ### Error: "unexpected status code: 401"
 - Your API key is invalid or expired. Get a new key from DeepSeek.
