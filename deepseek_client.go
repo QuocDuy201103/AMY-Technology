@@ -208,11 +208,11 @@ func (c *DeepseekClient) SummarizeEmail(content string) (*SummaryResponse, error
 
 // ClassifyEmail sends email content to the classify endpoint
 func (c *DeepseekClient) ClassifyEmail(content string) (*ClassifyResponse, error) {
-	// Instruct model to output strict JSON
+	// Instruct model to output strict JSON with single best label
 	reqBody := chatRequest{
 		Model: c.Model,
 		Messages: []chatMessage{
-			{Role: "system", Content: "Classify the email into labels. Output strict JSON: {\"labels\":[{\"label\":string,\"score\":number}]} with no extra text."},
+			{Role: "system", Content: "Classify the email into the most appropriate category. Return ONLY ONE label with the highest confidence score. Output strict JSON: {\"labels\":[{\"label\":string,\"score\":number}]} with no extra text. Common labels: urgent, action_required, follow_up, spam, phishing, personal, meeting_reminder, business_communication, request_feedback, etc."},
 			{Role: "user", Content: fmt.Sprintf("Classify this email (HTML allowed):\n\n%s", content)},
 		},
 	}
@@ -339,11 +339,31 @@ func (c *DeepseekClient) ClassifyEmailsBatch(emails []EmailRequest) ([]BatchClas
 			continue
 		}
 		
+		// Keep only the label with the highest score
+		topLabel := getTopLabel(classification.Labels)
+		
 		results[i] = BatchClassificationResult{
 			ID:     email.ID,
-			Labels: classification.Labels,
+			Labels: topLabel,
 		}
 	}
 	
 	return results, nil
+}
+
+// getTopLabel returns only the label with the highest score
+func getTopLabel(labels []ClassificationLabel) []ClassificationLabel {
+	if len(labels) == 0 {
+		return []ClassificationLabel{}
+	}
+	
+	// Find the label with the highest score
+	topLabel := labels[0]
+	for _, label := range labels[1:] {
+		if label.Score > topLabel.Score {
+			topLabel = label
+		}
+	}
+	
+	return []ClassificationLabel{topLabel}
 }

@@ -266,9 +266,10 @@ Batch email classification endpoint that supports processing 1-100 emails per re
 - Content-Type: `application/json` (always)
 - Content-Encoding: `gzip` (always compressed)
 - Body: JSON object with `results` array
-  - **Chỉ trả về:** Email ID và kết quả phân loại (labels)
+  - **Chỉ trả về:** Email ID và 1 label có score cao nhất
   - **Không trả về:** Nội dung email (content)
   - **Luôn được nén:** Gzip compression
+  - **Mỗi email:** Chỉ có **1 label duy nhất** với score cao nhất
 
 ```json
 {
@@ -279,10 +280,6 @@ Batch email classification endpoint that supports processing 1-100 emails per re
         {
           "label": "important",
           "score": 0.95
-        },
-        {
-          "label": "work",
-          "score": 0.87
         }
       ]
     },

@@ -4,24 +4,55 @@
 
 API đã deploy thành công, chỉ cần test:
 
-### Test với PowerShell
+### Test Tất Cả Endpoints (Khuyến Nghị)
 
 ```powershell
-# Test với 5 emails (batch)
+# Test tất cả endpoints cùng lúc
+.\test_all_endpoints.ps1
+```
+
+### Test Từng Endpoint Riêng Lẻ
+
+```powershell
+# Test Classify (batch emails)
+.\test_api.ps1
+
+# Test Summarize
+.\test_summarize.ps1
+
+# Test Draft Reply
+.\test_draft.ps1
+```
+
+### Test Thủ Công
+
+```powershell
+# Health Check
+Invoke-RestMethod -Uri "https://cloud-inference-service-29216080826.us-central1.run.app/health" -Method Get
+
+# Classify (batch)
 $body = Get-Content test_case.json -Raw
 $response = Invoke-WebRequest -Uri "https://cloud-inference-service-29216080826.us-central1.run.app/classify" `
     -Method Post `
     -ContentType "application/json" `
     -Body $body
+$response.Content | ConvertFrom-Json | ConvertTo-Json -Depth 10
 
-$jsonResponse = $response.Content | ConvertFrom-Json
-$jsonResponse | ConvertTo-Json -Depth 10
-```
+# Summarize
+$emailContent = "<html><body>Your email content here...</body></html>"
+$response = Invoke-WebRequest -Uri "https://cloud-inference-service-29216080826.us-central1.run.app/summarize" `
+    -Method Post `
+    -ContentType "text/plain" `
+    -Body $emailContent
+$response.Content | ConvertFrom-Json
 
-### Test Health Check
-
-```powershell
-Invoke-RestMethod -Uri "https://cloud-inference-service-29216080826.us-central1.run.app/health" -Method Get
+# Draft Reply
+$emailContent = "<html><body>Email to reply to...</body></html>"
+$response = Invoke-WebRequest -Uri "https://cloud-inference-service-29216080826.us-central1.run.app/draft" `
+    -Method Post `
+    -ContentType "text/plain" `
+    -Body $emailContent
+$response.Content | ConvertFrom-Json
 ```
 
 ---
